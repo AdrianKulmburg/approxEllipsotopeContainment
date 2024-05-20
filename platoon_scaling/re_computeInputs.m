@@ -1,4 +1,4 @@
-function averageRuntime = re_computeInputs(termRegObject, simulations)
+function [averageRuntime, stdError] = re_computeInputs(termRegObject, simulations)
 
 % Loading algorithm parameters
 timeStepSize = termRegObject.optsInternal.Opts.timeStep;
@@ -28,9 +28,11 @@ if isempty(options_linprog)
 end
 
 % And now we can start the show:
-totalRuntime = tic;
+runtimes = zeros([Nsimulation 1]);
 for i=1:Nsimulation
-    y0_no_input = simulations{i}.y(:,1) - termRegObject.optsInternal.sys.D * simulations{i}.u(:,1);
+    currentTic = tic;
+    %y0_no_input = simulations{i}.y(:,1) - termRegObject.optsInternal.sys.D * simulations{i}.u(:,1);
+    y0_no_input = simulations{i}.y(:,1);
     if strcmp(termRegObject.optsInternal.controlMethod, 'feedback')
         % for the feedback method, we need to compute the parametrization of
         % the initial point
@@ -123,10 +125,12 @@ for i=1:Nsimulation
         u_iter = computeControlInput(termRegObject, y0_iter, u_iter, j, alpha, beta);
     end
 
+    runtimes(i) = toc(currentTic);
 end
-totalRuntime = toc(totalRuntime);
 
-averageRuntime = totalRuntime/Nsimulation;
+
+averageRuntime = sum(runtimes)/Nsimulation;
+stdError = std(runtimes)/sqrt(Nsimulation);
 
 
 end

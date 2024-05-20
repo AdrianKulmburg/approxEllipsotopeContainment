@@ -58,6 +58,7 @@ function u = computeControlInput(T, y, currentInput, nTimeStep, varargin)
 
 global CHECKS_ENABLED
 if CHECKS_ENABLED
+
     inputArgsCheck({{y,'att','numeric',{'vector','nonnan','finite'}}});
     equalDimCheck(T.set, y)
     inputArgsCheck({{nTimeStep,'att','numeric',{'scalar','nonnan','finite','positive','integer'}}});
@@ -73,91 +74,40 @@ if CHECKS_ENABLED
     end
 end
 
-if strcmp(T.optsInternal.controlMethod, 'feedback')
-    if isempty(varargin)
-        error("For the feedback method, the parameters alpha and beta have to be specified.")
-    end
-    alpha = varargin{1};
-    beta = varargin{2};
-    inputArgsCheck({{alpha,'att','numeric',{'vector','nonnan','finite'}}});
-    inputArgsCheck({{beta,'att','numeric',{'vector','nonnan','finite'}}});
 
-    termReg = T.set;
-    errorSet = T.V;
+if isempty(varargin)
+    error("For the feedback method, the parameters alpha and beta have to be specified.")
+end
+alpha = varargin{1};
+%beta = varargin{2};
+
+termReg = T.set;
+errorSet = T.V;
+
+if CHECKS_ENABLED
+    inputArgsCheck({{alpha,'att','numeric',{'vector','nonnan','finite'}}});
+    %inputArgsCheck({{beta,'att','numeric',{'vector','nonnan','finite'}}});
+    
     if strcmp(T.Opts.terminalRegionType, 'zonotope') && size(generators(termReg),2) ~= length(alpha)
         error("Dimension mismatch between alpha and the number of generators for the (error-free) initial set.")
     elseif strcmp(T.Opts.terminalRegionType, 'ellipsoid') && dim(termReg) ~= length(alpha)
         error("Dimension mismatch between alpha and the number of generators for the (error-free) initial set.")
-    elseif size(generators(errorSet),2) ~= length(beta)
-        error("Dimension mismatch between beta and the number of generators for the measurements error set.")
+    %elseif size(generators(errorSet),2) ~= length(beta)
+    %    error("Dimension mismatch between beta and the number of generators for the measurements error set.")
     end
 end
 
-if strcmp(T.optsInternal.controlMethod, 'iterative')
 
-    % Suppress solver output
-    persistent options
-    if isempty(options)
-        options = optimoptions('linprog', 'Display', 'none');
-    end
+K_mod = T.feedback_speedup.K_mod;
 
-    G = T.Rtp{nTimeStep}.YnoInput.G;
-    c = T.Rtp{nTimeStep}.YnoInput.c;
-    
-    
-    % See also cora/contSet/@zonotope/zonotopeNorm
-    % Retrieve dimensions of the generator matrix of Rtp
-    n = size(G, 1);
-    m = size(G, 2);
-    
-    % Set up objective and constraints of the linear program
-    f = [1;sparse(m, 1)];
+U_alpha = T.termRegCtrl{nTimeStep}.U_alpha;
+%U_beta = T.termRegCtrl{nTimeStep}.U_beta;
+u_c = T.termRegCtrl{nTimeStep}.u_c;
 
-    y_no_input = y - T.optsInternal.Param.D*currentInput;
-    
-    Aeq = [sparse(n,1) G];
-    beq = y_no_input - c;
-    
-    Aineq1 = [-ones([m 1]) speye(m)];
-    Aineq2 = [-ones([m 1]) -speye(m)];
-    
-    Aineq = [Aineq1; Aineq2];
-    bineq = sparse(2*m, 1);
-    
-    % Solve the linear program
-    [x, fval, exitflag] = linprog(f, Aineq, bineq, Aeq, beq, [], [], options);
-    
-    tol = 1e-1;
-    
-    % If the problem is not feasible, x has been chosen incorrectly
-    if exitflag == -2 || fval > 1 + tol
-        error('The point x does not lie in the corresponding reachable set.')
-    % In case anything else went wrong, throw out an error
-    elseif exitflag ~= 1
-        throw(CORAerror('CORA:solverIssue'));
-    end
-    
-    alpha = x(2:(m-size(generators(T.optsInternal.Param.V),2)+1));
-    beta = x((m-size(generators(T.optsInternal.Param.V),2)+2):end);
-    
-    % Now that we have a parametrization of x, we can compute the input
-    U_alpha = T.termRegCtrl{nTimeStep}.U_alpha;
-    U_beta = T.termRegCtrl{nTimeStep}.U_beta;
-    u_c = T.termRegCtrl{nTimeStep}.u_c;
+% We can now compute the control input quite easily
+%u = K_mod * (y - T.optsInternal.Param.D*currentInput) + U_alpha * alpha + U_beta * beta + u_c;
+u = K_mod * y + U_alpha * alpha + u_c;
 
-    u = U_alpha * alpha + U_beta * beta + u_c;
-
-else
-    K_mod = T.feedback_speedup.K_mod;
-
-    U_alpha = T.termRegCtrl{nTimeStep}.U_alpha;
-    U_beta = T.termRegCtrl{nTimeStep}.U_beta;
-    u_c = T.termRegCtrl{nTimeStep}.u_c;
-
-    % We can now compute the control input quite easily
-    u = K_mod * (y - T.optsInternal.Param.D*currentInput) + U_alpha * alpha + U_beta * beta + u_c;
-
-end
 
 
 

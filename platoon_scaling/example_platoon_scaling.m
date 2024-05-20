@@ -2,12 +2,13 @@
 % platoon benchmark using the containmentLinSys algorithm, for different
 % numbers of vehicles.
 clear;
-nVehicles = 10;
+nVehicles = 2;
 global CHECKS_ENABLED
 CHECKS_ENABLED = false;
 
-compute_zonoLinSys = false; % Deactivate this if you don't want to compute the results from Gruber et al.
 
+compute_zonoLinSys = true; % Deactivate this if you don't want to compute the results from Gruber et al.
+compute_volume = true; % Deactivate this if you don't want to compute the volume of the safe sets (recommended for higher dimensions)
 
 yalmip('clear');
 rng(1234);
@@ -71,10 +72,12 @@ if compute_zonoLinSys
     disp("Time elapsed for zonoLinSys: " + num2str(t_zonoLinSys))
 end
 
-V_ell = volume(project(T_ell_feedback.set, [1 2]))
-V_zono = volume(project(T_zono_feedback.set, [1 2]))
-if compute_zonoLinSys
-    V_zonoLinSys = volume(project(T_zonoLinSys.set, [1 2]))
+if compute_volume
+    V_ell = volume(T_ell_feedback.set)
+    V_zono = volume(T_zono_feedback.set)
+    if compute_zonoLinSys
+        V_zonoLinSys = volume(T_zonoLinSys.set)
+    end
 end
 
 yalmip('clear')
