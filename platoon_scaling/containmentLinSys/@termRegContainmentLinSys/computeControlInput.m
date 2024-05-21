@@ -56,7 +56,6 @@ function u = computeControlInput(T, y, currentInput, nTimeStep, varargin)
 %               Embedded Systems, TU Muenchen
 %------------------------------------------------------------------
 
-global CHECKS_ENABLED
 if CHECKS_ENABLED
 
     inputArgsCheck({{y,'att','numeric',{'vector','nonnan','finite'}}});
@@ -101,11 +100,9 @@ end
 K_mod = T.feedback_speedup.K_mod;
 
 U_alpha = T.termRegCtrl{nTimeStep}.U_alpha;
-%U_beta = T.termRegCtrl{nTimeStep}.U_beta;
 u_c = T.termRegCtrl{nTimeStep}.u_c;
 
 % We can now compute the control input quite easily
-%u = K_mod * (y - T.optsInternal.Param.D*currentInput) + U_alpha * alpha + U_beta * beta + u_c;
 u = K_mod * y + U_alpha * alpha + u_c;
 
 

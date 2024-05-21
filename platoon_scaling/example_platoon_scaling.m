@@ -3,7 +3,11 @@
 % numbers of vehicles.
 clear;
 nVehicles = 2;
-global CHECKS_ENABLED
+
+% The next line does nothing, but is a reminder that for the proper timing
+% of this code, one needs to change line 29 in
+% cora/global/macros/CHECKS_ENABLED.m
+% to false
 CHECKS_ENABLED = false;
 
 

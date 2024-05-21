@@ -31,11 +31,7 @@ end
 runtimes = zeros([Nsimulation 1]);
 for i=1:Nsimulation
     currentTic = tic;
-    %y0_no_input = simulations{i}.y(:,1) - termRegObject.optsInternal.sys.D * simulations{i}.u(:,1);
     y0_no_input = simulations{i}.y(:,1);
-    if strcmp(termRegObject.optsInternal.controlMethod, 'feedback')
-        % for the feedback method, we need to compute the parametrization of
-        % the initial point
 
         if strcmp(termRegObject.Opts.terminalRegionType, 'ellipsoid')
             if termRegObject.feedback_speedup.is_bijective
@@ -44,7 +40,6 @@ for i=1:Nsimulation
                 preimage = termRegObject.feedback_speedup.multFactor * y0_no_input + termRegObject.feedback_speedup.constFactor;
 
                 alpha = preimage(1:termRegObject.optsInternal.size_s);
-                beta = preimage((termRegObject.optsInternal.size_s+1):end);
             else
                 % Otherwise, we have to compute a slightly costly quadratic program
                 V_ngen = size(generators(termRegObject.optsInternal.Param.V),2);
@@ -73,7 +68,6 @@ for i=1:Nsimulation
                 end
 
                 alpha = preimage(1:termRegObject.optsInternal.size_s);
-                beta = preimage((termRegObject.optsInternal.size_s+1):end);
             end
 
         else
@@ -88,8 +82,9 @@ for i=1:Nsimulation
             f = [1;sparse(m,1)];
 
             Aeq = [sparse(n, 1) termRegObject.feedback_speedup.G_comb];
-            beq = simulations{i}.y(:,1) - termRegObject.optsInternal.sys.D*simulations{i}.u(:,1) - termRegObject.feedback_speedup.c_comb;
+            beq = simulations{i}.y(:,1) - termRegObject.feedback_speedup.c_comb;
 
+            
             Aineq1 = [-ones([m 1]) speye(m)];
             Aineq2 = [-ones([m 1]) -speye(m)];
 
@@ -112,17 +107,11 @@ for i=1:Nsimulation
             end
 
             alpha = preimage(2:(m - size(generators(termRegObject.optsInternal.Param.V),2)+1));
-            beta = preimage((m - size(generators(termRegObject.optsInternal.Param.V),2)+2):end);
         end
-    else
-        alpha = [];
-        beta = [];
-    end
-    %y0_iter = simulations{i}.y(:,1);
     u_iter = simulations{i}.u(:,1);
     for j=1:N
         y0_iter = simulations{i}.y(:,steps_indices{i}(j));
-        u_iter = computeControlInput(termRegObject, y0_iter, u_iter, j, alpha, beta);
+        u_iter = computeControlInput(termRegObject, y0_iter, u_iter, j, alpha, 0);
     end
 
     runtimes(i) = toc(currentTic);
